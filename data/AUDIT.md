@@ -74,7 +74,8 @@ so every h = 4 target exists. All six (h, d) cells use the same origins.
 
 | Segment | Index range | Weeks | Issue dates (start.date) |
 |---|---|---|---|
-| Scaling | 0–799 | 800 | 2006-12-23 → 2022-04-16 |
+| Scaling | 0–795 | 796 | 2006-12-23 → 2022-03-19 |
+| Gap (history only, no segment) | 796–799 | 4 | 2022-03-26 → 2022-04-16 |
 | Warm-up | 800–851 | 52 | 2022-04-23 → 2023-04-15 |
 | Validation | 852–903 | 52 | 2023-04-22 → 2024-04-13 |
 | Test | 904–1007 | 104 | 2024-04-20 → 2026-04-13 |
@@ -87,6 +88,9 @@ so every h = 4 target exists. All six (h, d) cells use the same origins.
 - The Puttalam NaN (2026-02-09) falls in the test window. It is excluded from
   scoring and updating for every method.
 - All 104 COVID weeks (2020–21) are in the scaling segment and are included in s(i).
+- The scaling segment ends max(d) = 4 rows before the first warm-up issue, so s(i)
+  uses no row later than t − d at any issue t for any d (found by the
+  perturbation test before any score existed; rows 796–799 are ordinary history).
 
 ## Zero counts and scale in the test window (issue weeks 904–1007)
 
@@ -97,30 +101,30 @@ s(i) = max(1, mean over the scaling segment); no area hits the floor of 1.
 |---|---|---|---|---|---|
 | Mullaitivu | 27 | 104 | 26.0 | 539 | 1.48 |
 | Kilinochchi | 27 | 104 | 26.0 | 485 | 2.06 |
-| Vavuniya | 24 | 104 | 23.1 | 330 | 6.28 |
-| Mannar | 9 | 104 | 8.7 | 411 | 3.54 |
+| Vavuniya | 24 | 104 | 23.1 | 330 | 6.30 |
+| Mannar | 9 | 104 | 8.7 | 411 | 3.55 |
 | Ampara | 8 | 104 | 7.7 | 335 | 3.36 |
-| NuwaraEliya | 1 | 104 | 1.0 | 149 | 4.78 |
-| Kalmune | 1 | 104 | 1.0 | 200 | 14.90 |
-| Anuradhapura | 1 | 104 | 1.0 | 69 | 11.19 |
-| Badulla | 0 | 104 | 0.0 | 61 | 15.22 |
-| Batticaloa | 0 | 104 | 0.0 | 74 | 32.85 |
-| Colombo | 0 | 104 | 0.0 | 5 | 170.96 |
-| Galle | 0 | 104 | 0.0 | 64 | 27.84 |
-| Gampaha | 0 | 104 | 0.0 | 17 | 98.45 |
-| Hambanthota | 0 | 104 | 0.0 | 61 | 14.61 |
-| Jaffna | 0 | 104 | 0.0 | 145 | 39.27 |
-| Kalutara | 0 | 104 | 0.0 | 16 | 45.54 |
-| Kandy | 0 | 104 | 0.0 | 14 | 59.02 |
-| Kegalle | 0 | 104 | 0.0 | 14 | 32.73 |
-| Kurunegala | 0 | 104 | 0.0 | 7 | 41.81 |
-| Matale | 0 | 104 | 0.0 | 55 | 15.38 |
-| Matara | 0 | 104 | 0.0 | 37 | 25.08 |
-| Monaragala | 0 | 104 | 0.0 | 173 | 8.93 |
-| Polonnaruwa | 0 | 104 | 0.0 | 157 | 5.86 |
-| Puttalam | 0 | 103 | 0.0 | 58 | 24.17 |
-| Ratnapura | 0 | 104 | 0.0 | 12 | 35.53 |
-| Trincomalee | 0 | 104 | 0.0 | 148 | 17.72 |
+| NuwaraEliya | 1 | 104 | 1.0 | 149 | 4.79 |
+| Kalmune | 1 | 104 | 1.0 | 200 | 14.84 |
+| Anuradhapura | 1 | 104 | 1.0 | 69 | 11.22 |
+| Badulla | 0 | 104 | 0.0 | 61 | 15.24 |
+| Batticaloa | 0 | 104 | 0.0 | 74 | 32.82 |
+| Colombo | 0 | 104 | 0.0 | 5 | 171.74 |
+| Galle | 0 | 104 | 0.0 | 64 | 27.79 |
+| Gampaha | 0 | 104 | 0.0 | 17 | 98.65 |
+| Hambanthota | 0 | 104 | 0.0 | 61 | 14.60 |
+| Jaffna | 0 | 104 | 0.0 | 145 | 39.05 |
+| Kalutara | 0 | 104 | 0.0 | 16 | 45.51 |
+| Kandy | 0 | 104 | 0.0 | 14 | 59.18 |
+| Kegalle | 0 | 104 | 0.0 | 14 | 32.77 |
+| Kurunegala | 0 | 104 | 0.0 | 7 | 41.90 |
+| Matale | 0 | 104 | 0.0 | 55 | 15.43 |
+| Matara | 0 | 104 | 0.0 | 37 | 25.11 |
+| Monaragala | 0 | 104 | 0.0 | 173 | 8.94 |
+| Polonnaruwa | 0 | 104 | 0.0 | 157 | 5.88 |
+| Puttalam | 0 | 103 | 0.0 | 58 | 24.18 |
+| Ratnapura | 0 | 104 | 0.0 | 12 | 35.50 |
+| Trincomalee | 0 | 104 | 0.0 | 148 | 17.55 |
 
 Test-window total: 98 zeros out of 2,703 observed area-weeks (3.6%). The zeros
 concentrate in three Northern Province areas (Mullaitivu, Kilinochchi,

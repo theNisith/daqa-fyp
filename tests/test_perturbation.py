@@ -104,11 +104,28 @@ def test_negative_control_legal_change_is_detected(ds, pipe, grids, references):
     assert any(x.startswith("multiqt") for x in diffs)
 
 
-@pytest.mark.xfail(strict=True, reason="OPEN: s(i) uses scaling rows up to warm-up start - 1, which are not yet "
-                                       "available at the first d-1 warm-up issues when d > 0 (see CLAUDE.md)")
 @pytest.mark.parametrize("ds", DATASETS)
 def test_scale_legal_at_first_warmup_issue(ds, grids):
     g = grids[ds]
     s = make_splits(len(g))
     t, d = s.warmup.start, 4
     pd.testing.assert_series_equal(area_scale(perturb_after(g, t - d), s.scaling), area_scale(g, s.scaling))
+
+
+SCALING_ROWS = {"srilanka": range(0, 796), "ilinet": range(0, 619)}  # 0 .. warmup.start - 1 - max(d)
+
+
+@pytest.mark.parametrize("d", DELAYS)
+@pytest.mark.parametrize("ds", DATASETS)
+def test_scale_unchanged_by_future_perturbation_at_first_warmup_issue(ds, d, grids):
+    # s(i) is fixed once; the earliest issue that uses it is warmup.start, so legality there
+    # implies legality at every later issue (rows > t - d shrink as t grows).
+    g = grids[ds]
+    s = make_splits(len(g))
+    assert s.scaling == SCALING_ROWS[ds]
+    t = s.warmup.start
+    ref = area_scale(g, s.scaling)
+    pd.testing.assert_series_equal(area_scale(perturb_after(g, t - d), s.scaling), ref)
+    # Power: the same perturbation one row earlier reaches the last scaling row and moves s(i).
+    pert = perturb_after(g, s.scaling[-1] - 1)
+    assert (area_scale(pert, s.scaling) != ref).any()

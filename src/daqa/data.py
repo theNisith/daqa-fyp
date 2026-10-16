@@ -19,6 +19,8 @@ import numpy as np
 import pandas as pd
 import pyreadr
 
+from daqa.timing import DELAYS
+
 DATA_DIR = Path(__file__).resolve().parents[2] / "data"
 DATA_PATH = DATA_DIR / "srilanka_weekly_data.rda"
 DATE_FORMAT = "%m/%d/%Y"
@@ -36,6 +38,9 @@ N_TEST = 104
 N_VALIDATION = 52
 N_WARMUP = 52
 MIN_SCALING = 104
+# The scaling segment ends this many rows before the first warm-up issue, so
+# no pre-test statistic uses a row later than t - d at any issue t, for any d.
+SCALING_GAP = max(DELAYS)
 
 
 def load_srilanka(path: str | Path = DATA_PATH) -> pd.DataFrame:
@@ -115,13 +120,17 @@ def make_splits(
 
     The last test issue is n_weeks - 1 - max_h, so every h <= max_h target of
     every test issue exists in the data. Test = 104 issues, validation = 52
-    before it, warm-up = 52 before that, scaling = every earlier week.
+    before it, warm-up = 52 before that, scaling = rows 0 .. warmup.start - 1
+    - SCALING_GAP. The SCALING_GAP rows between scaling and warm-up belong to
+    no segment (they are ordinary history in contexts); excluding them keeps
+    s(i) and any other pre-test statistic legal at the first warm-up issue for
+    every d. This is the only place the scaling boundary is defined.
     """
     test_end = n_weeks - max_h  # exclusive
     test = range(test_end - N_TEST, test_end)
     validation = range(test.start - N_VALIDATION, test.start)
     warmup = range(validation.start - N_WARMUP, validation.start)
-    scaling = range(0, warmup.start)
+    scaling = range(0, max(0, warmup.start - SCALING_GAP))
     if len(scaling) < MIN_SCALING:
         raise ValueError(f"scaling segment has {len(scaling)} weeks, need >= {MIN_SCALING}")
 

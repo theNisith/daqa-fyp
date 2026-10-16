@@ -143,7 +143,7 @@ def test_splits_exact_indices(splits):
     assert splits.test[-1] == n - 1 - 4
     assert splits.validation == range(splits.test.start - 52, splits.test.start)
     assert splits.warmup == range(splits.validation.start - 52, splits.validation.start)
-    assert splits.scaling == range(0, splits.warmup.start)
+    assert splits.scaling == range(0, splits.warmup.start - 4) == range(0, 796)  # ends max(d) = 4 rows early
     assert len(splits.scaling) >= 104
 
 
@@ -151,7 +151,10 @@ def test_splits_disjoint_contiguous_and_in_time_order(splits, grid):
     segs = list(splits.segments().values())
     idx = [i for r in segs for i in r]
     assert len(idx) == len(set(idx))  # disjoint
-    assert idx == list(range(len(idx)))  # contiguous from 0, earliest segment first
+    # Contiguous from 0, earliest segment first, except the 4 gap rows between scaling and warm-up.
+    gap = list(range(splits.scaling.stop, splits.warmup.start))
+    assert gap == [796, 797, 798, 799]
+    assert sorted(idx + gap) == list(range(len(idx) + len(gap)))
     for earlier, later in zip(segs, segs[1:]):
         assert earlier[-1] < later[0]
         assert grid.index[earlier[-1]] < grid.index[later[0]]
@@ -174,8 +177,8 @@ def test_splits_dates(splits, grid):
 
 def test_splits_require_scaling_history():
     with pytest.raises(ValueError, match="scaling"):
-        make_splits(4 + 104 + 52 + 52 + 103)
-    make_splits(4 + 104 + 52 + 52 + 104)
+        make_splits(4 + 104 + 52 + 52 + 4 + 103)
+    make_splits(4 + 104 + 52 + 52 + 4 + 104)
 
 
 def test_splits_reject_mismatched_dates(grid):
