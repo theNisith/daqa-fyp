@@ -34,7 +34,7 @@ def main() -> None:
     # match their actual calendar date (a row labelled year=2026, week=53 has
     # start.date=2025-12-20). Sorting by (year, week) misorders those rows, so
     # chronology is derived from the parsed start.date instead.
-    dates = pd.to_datetime(df["start.date"])
+    dates = pd.to_datetime(df["start.date"], format="%m/%d/%Y")
     df_sorted = df.assign(_start_date=dates).sort_values("_start_date")
     first = df_sorted.iloc[0]
     last = df_sorted.iloc[-1]
