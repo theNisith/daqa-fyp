@@ -1,0 +1,5 @@
+*.json -text
+*.csv -text
+*.rda binary
+*.npz binary
+*.parquet binary
