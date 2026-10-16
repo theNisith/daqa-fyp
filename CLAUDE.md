@@ -55,7 +55,8 @@ Done / verified:
 - `data/srilanka_weekly_data.rda` downloaded and pinned at commit `86d8070`; SHA-256, shape, and per-year/per-district counts verified by `src/check_data.py` (dates parsed with `format="%m/%d/%Y"` from `start.date`, never from `year`/`week` — see the known week-53 quirk noted in `data/README.md`).
 - `amazon/chronos-bolt-small` smoke-tested on CPU, frozen, inference-only (`src/smoke_chronos.py`): returns valid shape `(1, 8, 9)` native quantiles, non-decreasing, no negatives, no NaNs in output — for both a clean context (Colombo) and a context containing one real missing week (Puttalam, NaN at 2026-02-09). "No negatives" was only checked for Colombo and Puttalam; low-count areas are untested. Chronos-Bolt accepted the NaN context without raising. Verified from chronos-forecasting v2.3.2 source (src/chronos/chronos_bolt.py lines 111-112, 284-307): NaN is masked out of the context, scaling uses nanmean, and the observed-mask is passed to the model. Policy: missing weeks enter the context as NaN.
 - `requirements.txt` pinned via `pip freeze` (pandas, pyreadr, pytest, chronos-forecasting, torch, transformers, etc.).
-- Git repo initialized, 3 commits made, pushed to `origin/main`.
+- Data layer `src/daqa/data.py`: `load_srilanka`, `to_grid` (1012 × 26, float, Puttalam 2026-02-09 stays NaN), `validate`, `make_splits` (scaling 0–799 / warm-up 800–851 / validation 852–903 / test 904–1007; test issues 2024-04-20 → 2026-04-13), `area_scale` (no area hits the floor of 1). `tests/test_data.py`: 26 passed (`python -m pytest`, `pytest.ini` sets `pythonpath = src`). Full audit, including week-label irregularities and test-window zero counts, in `data/AUDIT.md`.
+- Git repo initialized and pushed to `origin/main`.
 
 Open / not started:
 - Full forecast cache across both datasets, all 6 (h, d) cells (proposal 5.3) — only a smoke test exists so far, not the real cache.
@@ -66,4 +67,6 @@ Open / not started:
 - ILINet snapshot download and transfer validation (5.2) — not started.
 - Everything in Weeks 2–4 of the proposal's work plan (metrics, bootstrap, shock test, case study, offline demo, dissertation) — not started.
 
-Next: data layer.
+Assumed / open from the audit: report-week vs onset-week meaning of `cases`, and the Epidemiology Unit's own week-53 convention, are unchecked. Irregular weeks (2009 boundaries, 2025-12-27/28 uncovered by the Monday switch) mean a 52-row lag is not always exactly 364 days; decide how to handle this when building features.
+
+Next: full Chronos forecast cache (5.3), then release queue + chronology/perturbation tests.
