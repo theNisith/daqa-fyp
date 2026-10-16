@@ -9,7 +9,7 @@ DAQA: a shared, context-conditioned, affine online correction of a frozen founda
 - Base forecaster: **amazon/chronos-bolt-small**, frozen. Native quantiles 0.1–0.9 (nine levels, step 0.1).
 - Horizon `h ∈ {1, 4}`, additional reporting delay `d ∈ {0, 2, 4}` → 6 cells per dataset.
 - Primary endpoint: paired DAQA − MultiQT difference in native WIS (weighted interval score).
-- Mandatory baseline: **MultiQT** (Ding, Gibbs and Tibshirani, 2025), used via the authors' own public implementation, not a reimplementation.
+- Mandatory baseline: **MultiQT** (Ding, Gibbs and Tibshirani, 2025): [PENDING SUPERVISOR] proposal says authors' implementation; research notes say no LICENSE, so plan is own implementation with exact parity against authors' multiQT() at a pinned commit. Do not copy authors' code into this repo.
 - Other comparators: seasonal naive, frozen Chronos-Bolt, frozen + calibration, MultiQT + calibration, shared centre-only correction (+ calibration), DAQA (+ calibration).
 - Primary data: `srilanka_weekly_data` from the `denguedatahub` repo, pinned commit `86d8070`.
 - Secondary data: US ILINet (HHS regional wILI), minimal-depth transfer validation only.
@@ -23,6 +23,11 @@ DAQA: a shared, context-conditioned, affine online correction of a frozen founda
 - **Never change scope without asking.** If a change seems to require touching anything in the "never reduced" list (Sri Lankan primary endpoint, MultiQT, centre-only ablation, shared DAQA, chronology/perturbation tests, bootstrap, downside analysis, dissertation) or adding methods/analyses not in the proposal, stop and ask first. Pre-declared contingency reductions (Section 5.11) are the only pre-approved scope cuts, applied in their stated order.
 - **Label all work as verified / assumed / done.** Every claim about data, results, or code behavior gets one of these tags so it's clear what's been checked versus what's presumed.
 - **Never claim code works without test output.** Don't say something passes, works, or is correct unless you've actually run it and can show the output. Paste or summarize real output, not expected output.
+- **Time features from `start.date` only.** Index, 52-week lag, and seasonal phase are built only from `start.date`, never from the `year`/`week` columns (verified: 2024-2025 week labels are shifted by one; 2026 weeks start Monday).
+- **Missing weeks stay NaN, never 0.** A missing target is excluded from scoring and updating for every method alike (proposal 5.2).
+- **No test-period score before the protocol is committed and hashed.** All tuning uses pre-test data only (5.6).
+- **Area scale `s(i)` uses pre-test data only.** The issued forecast is the rearranged (sorted) quantile vector (5.4).
+- **MultiQT delay `D = h - 1 + d`**, built from the same release queue as DAQA (5.5).
 
 ## Layout
 
