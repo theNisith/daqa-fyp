@@ -149,16 +149,26 @@ class MultiQTResult:
     scale: np.ndarray  # (n_areas,) s(i)
 
 
-def run_multiqt(dataset: str, h: int, d: int, lr, cache=None, grid=None) -> MultiQTResult:
-    """MultiQT for every area of a dataset in one (h, d) cell, over all cached issues."""
+def run_multiqt(dataset: str, h: int, d: int, lr, cache=None, grid=None, base=None, issues=None) -> MultiQTResult:
+    """MultiQT for every area of a dataset in one (h, d) cell.
+
+    By default the base vectors and issues come from the forecast cache. Passing
+    ``base`` ((n_issues, n_areas, 9) sorted, unscaled) with consecutive
+    ``issues`` runs on recomputed base vectors instead (perturbation test).
+    """
     grid = load_grid(dataset) if grid is None else grid
-    cache = load_cache(dataset) if cache is None else cache
-    if list(cache.areas) != list(grid.columns) or len(cache.grid_dates) != len(grid):
-        raise ValueError("cache and grid do not match")
     scale = area_scale(grid, make_splits(len(grid)).scaling).to_numpy()
-    k = list(cache.delays).index(d)
-    base = cache.sorted[:, :, k, step_index(h, d) - 1, :].astype(np.float64) / scale[None, :, None]
-    issues = cache.issue_idx
+    if base is None:
+        cache = load_cache(dataset) if cache is None else cache
+        if list(cache.areas) != list(grid.columns) or len(cache.grid_dates) != len(grid):
+            raise ValueError("cache and grid do not match")
+        k = list(cache.delays).index(d)
+        base = cache.sorted[:, :, k, step_index(h, d) - 1, :]
+        issues = cache.issue_idx
+    issues = np.asarray(issues)
+    if base.shape != (len(issues), grid.shape[1], len(QUANTILE_LEVELS)):
+        raise ValueError(f"base shape {base.shape} does not match issues/areas")
+    base = np.asarray(base, dtype=np.float64) / scale[None, :, None]
     values = grid.to_numpy(dtype=np.float64)
     targets = issues + h
     labels = np.full((len(issues), grid.shape[1]), np.nan)
@@ -179,4 +189,5 @@ def run_multiqt(dataset: str, h: int, d: int, lr, cache=None, grid=None) -> Mult
                      dataset, h, d, lr, area, res.n_nan_skips)
     issued = np.maximum(0.0, q * scale[None, :, None])
     return MultiQTResult(dataset=dataset, h=h, d=d, lr=lr, issued=issued, q_scaled=q, theta=theta,
-                         eta=eta, nan_skips=skips, issue_idx=issues, areas=cache.areas, scale=scale)
+                         eta=eta, nan_skips=skips, issue_idx=issues, areas=np.asarray(grid.columns, dtype=str),
+                         scale=scale)

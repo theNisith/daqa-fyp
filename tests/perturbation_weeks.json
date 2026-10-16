@@ -1,0 +1,13 @@
+{
+  "rule": "Pre-declared by date, not at random: in each segment, the first issue week on or after 1 January (2023 in warm-up, 2024 in validation, 2025 in test). Dates are grid start dates (Sri Lanka start.date; ILINet epiweek Sunday).",
+  "srilanka": {
+    "warmup": "2023-01-07",
+    "validation": "2024-01-06",
+    "test": "2025-01-04"
+  },
+  "ilinet": {
+    "warmup": "2023-01-01",
+    "validation": "2024-01-07",
+    "test": "2025-01-05"
+  }
+}
