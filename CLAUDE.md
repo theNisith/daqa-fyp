@@ -32,6 +32,7 @@ DAQA: a shared, context-conditioned, affine online correction of a frozen founda
 - Test origins end at T-4 (every h=4 target exists); the same 104 origins are used for all six cells.
 - COVID weeks (2020-21) are included in s(i).
 - Seasonal naive = value 52 grid rows earlier (verified: 364 or 366 days in the test window); seasonal phase = sin/cos of target start.date day-of-year / 365.25.
+- ILINet issue t = the FluView release that first reports epiweek t (proposal 5.2); the snapshot holds final revised values, so revision effects are a disclosed limitation. The timing layer treats both datasets identically on their own weekly grids.
 - Update the Status section at the end of every task.
 
 ## Layout
@@ -59,17 +60,19 @@ Done / verified:
 - Data layer `src/daqa/data.py`: `load_srilanka`, `to_grid` (1012 × 26, float, Puttalam 2026-02-09 stays NaN), `validate`, `make_splits` (scaling 0–799 / warm-up 800–851 / validation 852–903 / test 904–1007; test issues 2024-04-20 → 2026-04-13), `area_scale` (no area hits the floor of 1). `tests/test_data.py`: 26 passed (`python -m pytest`, `pytest.ini` sets `pythonpath = src`). Full audit, including week-label irregularities and test-window zero counts, in `data/AUDIT.md`.
 - ILINet snapshot `data/ilinet_snapshot_20261016.json` (one declared snapshot, current values only, no vintages): Delphi `fluview`, hhs1..hhs10, epiweeks 201040–202639, downloaded 2026-10-16T07:47Z, SHA-256 `4d860a61…991d`. 835 rows per region, 0 missing epiweeks, 0 null wILI; latest epiweek 202639 = issue 202639 (released 2026-10-09). Tidy CSV + audit via `src/check_ilinet.py`; URL, hash and counts in `data/README.md`. `load_ilinet()` returns the 835 × 10 (Sunday epiweek start × region) wILI grid, NaN for missing weeks (never filled); `epiweek_start()` implements MMWR weeks. `tests/test_ilinet.py`: 19 passed; full suite 45 passed.
 - Seasonal-naive 52-row lag checked on the Sri Lankan grid: rows 904–1011 span 364 days (88 rows) or 366 days (20 rows, all 2026 Monday-start weeks).
+- Timing layer `src/daqa/timing.py` (grid-position indices, identical for both datasets): `available_context` (last ≤104 values with index ≤ t−d, NaN kept, shorter if history is short, never padded, returns a copy), `step_index` = h+d, `first_usable_issue` = s+h+d, `multiqt_delay` D = h−1+d, `matured_at` (s+h+d == t), `matured_up_to` (s+h+d ≤ t); non-study (h, d) cells raise. `tests/test_timing.py`: 53 passed — all six cells, the issue-11/h=1/d=2 example (data through 9, step 3, usable at 14), edges h+d=1 and h+d=8, each record matures exactly once and never before s+h+d, 500-case random property test (no context index > t−d; perturbing every value after t−d leaves the context unchanged). Mutation-checked: leaking one future week fails 21 tests; maturing one issue early fails 16. Full suite: 98 passed.
+- `.gitattributes` (`*.json`/`*.csv -text`, `*.rda`/`*.npz`/`*.parquet binary`) committed; SHA-256 of both data files unchanged in working tree and committed blobs.
 - Git repo initialized and pushed to `origin/main`.
 
 Open / not started:
 - Full forecast cache across both datasets, all 6 (h, d) cells (proposal 5.3) — only a smoke test exists so far, not the real cache.
-- Release queue + chronology unit tests + future-label perturbation test (5.6) — not written yet.
+- Release queue built on the timing layer + future-label perturbation test (5.6) — not written yet (timing primitives and their unit tests are done).
 - MultiQT baseline implementation — not started; decided: own implementation + parity.
 - Centre-only correction and DAQA adapter code (5.4) — not started.
 - Interval calibration tracker (5.7), seasonal naive comparator, protocol file (not yet drafted, hashed, or committed) — not started.
-- ILINet transfer validation (5.2) — snapshot in hand, no modelling yet. Open: the snapshot's `issue`/`lag` are the latest revision (10 distinct issues, roughly one per season), not the release that first reported week t, so 5.2's "issue t aligned with the release that first reports week t" must be implemented in the timing layer without them.
+- ILINet transfer validation (5.2) — snapshot in hand, no modelling yet. The snapshot's `issue`/`lag` columns (latest revision, not first release) are not needed: issue t is aligned with the release that first reports epiweek t by definition, so ILINet runs through the same timing layer on its own grid.
 - Everything in Weeks 2–4 of the proposal's work plan (metrics, bootstrap, shock test, case study, offline demo, dissertation) — not started.
 
 Assumed / open from the audit: report-week vs onset-week meaning of `cases`, and the Epidemiology Unit's own week-53 convention, are unchecked. Irregular weeks (2009 boundaries, 2025-12-27/28 uncovered by the Monday switch) mean a 52-row lag is not always exactly 364 days; decide how to handle this when building features.
 
-Next: Step 4: timing layer
+Next: full Chronos-Bolt forecast cache (5.3) using `available_context` + 8-step requests, then release queue + future-label perturbation test (5.6).
