@@ -35,3 +35,51 @@ therefore misorders rows at year boundaries; `check_data.py` sorts by the parsed
 proposal's note (Section 5.2) that irregular week boundaries at year ends need
 verification. **Status: verified against the pinned commit; not yet reconciled
 against the Epidemiology Unit's own week-53 convention.**
+
+## ilinet_snapshot_20261016.json (+ .csv)
+
+One declared snapshot of U.S. ILINet weighted ILI (wILI) for the 10 HHS
+regions, used only for the minimal transfer validation (proposal 5.2). This is
+the only ILINet download; the file is never modified or re-fetched.
+
+- **Source**: Delphi Epidata `fluview` endpoint (legacy v3 API, documented at
+  https://cmu-delphi.github.io/delphi-epidata/api/fluview.html). Neither
+  `issues` nor `lag` was passed, so each row is the *current* (most recent)
+  value — no historical vintages.
+- **Exact URL**:
+  `https://api.delphi.cmu.edu/epidata/fluview/?regions=hhs1,hhs2,hhs3,hhs4,hhs5,hhs6,hhs7,hhs8,hhs9,hhs10&epiweeks=201040-202652`
+  (single GET with curl, no auth; the upper bound 202652 is just past "today"
+  so the response ends at the latest available epiweek)
+- **Downloaded (UTC)**: 2026-10-16T07:47:50Z – 07:47:56Z (server `Date`
+  header: Fri, 16 Oct 2026 07:47:55 GMT); HTTP 200, 2,248,205 bytes,
+  `"result": 1, "message": "success"` (not truncated)
+- **SHA-256 (JSON, byte-identical to the response body)**:
+  `4d860a6139851af203739cabdf7e50d69ca79de2cb31c95cbaf712b939b6991d`
+- **Tidy CSV**: `ilinet_snapshot_20261016.csv`, derived from the JSON by
+  `src/check_ilinet.py`; columns `region, epiweek, wili, num_ili,
+  num_patients, release_date, issue, lag`; 8,350 rows, ordered by
+  (epiweek, region). The JSON is the source of truth.
+
+### Verified figures (from `src/check_ilinet.py`, run 2026-10-16)
+
+- Epiweeks 201040 .. 202639 (week starts 2010-10-03 .. 2026-09-27; CDC/MMWR
+  weeks run Sunday to Saturday)
+- **Latest epiweek: 202639; its issue: 202639** (lag 0), release_date
+  2026-10-09. Max issue in the file: 202639.
+- Rows per region: **835** for each of hhs1 .. hhs10 (8,350 total)
+- Missing epiweeks per region: **0** for each of hhs1 .. hhs10 (checked
+  against every Sunday from 2010-10-03 to 2026-09-27, including the 53-week
+  years 2014 and 2020); null `wili`: 0 in every region
+- wILI range: 0.0474986 .. 13.5865
+
+### Note — `issue`/`lag` here are the latest revision, not first release
+
+Because no vintages were requested, `issue` is the issue of each value's most
+recent revision. The snapshot holds only 10 distinct issues: 201740 (covers
+201040–201639, lag up to 365), then one issue per season at about week 39 of
+the following year (201839, 201939, …, 202538), and 202639 for 202440–202639.
+These columns therefore do **not** give the release that *first* reported week
+`t`, which proposal 5.2 uses to align issue `t`. Consistent with 5.2, the
+snapshot tests delayed availability only and supports no revision claim.
+**Status: verified (counts above); how first-release timing is aligned is
+for the timing layer to settle.**

@@ -31,6 +31,7 @@ DAQA: a shared, context-conditioned, affine online correction of a frozen founda
 - Issued quantiles are clipped at 0 after rearrangement, for every method.
 - Test origins end at T-4 (every h=4 target exists); the same 104 origins are used for all six cells.
 - COVID weeks (2020-21) are included in s(i).
+- Seasonal naive = value 52 grid rows earlier (verified: 364 or 366 days in the test window); seasonal phase = sin/cos of target start.date day-of-year / 365.25.
 - Update the Status section at the end of every task.
 
 ## Layout
@@ -56,6 +57,8 @@ Done / verified:
 - `amazon/chronos-bolt-small` smoke-tested on CPU, frozen, inference-only (`src/smoke_chronos.py`): returns valid shape `(1, 8, 9)` native quantiles, non-decreasing, no negatives, no NaNs in output — for both a clean context (Colombo) and a context containing one real missing week (Puttalam, NaN at 2026-02-09). "No negatives" was only checked for Colombo and Puttalam; low-count areas are untested. Chronos-Bolt accepted the NaN context without raising. Verified from chronos-forecasting v2.3.2 source (src/chronos/chronos_bolt.py lines 111-112, 284-307): NaN is masked out of the context, scaling uses nanmean, and the observed-mask is passed to the model. Policy: missing weeks enter the context as NaN.
 - `requirements.txt` pinned via `pip freeze` (pandas, pyreadr, pytest, chronos-forecasting, torch, transformers, etc.).
 - Data layer `src/daqa/data.py`: `load_srilanka`, `to_grid` (1012 × 26, float, Puttalam 2026-02-09 stays NaN), `validate`, `make_splits` (scaling 0–799 / warm-up 800–851 / validation 852–903 / test 904–1007; test issues 2024-04-20 → 2026-04-13), `area_scale` (no area hits the floor of 1). `tests/test_data.py`: 26 passed (`python -m pytest`, `pytest.ini` sets `pythonpath = src`). Full audit, including week-label irregularities and test-window zero counts, in `data/AUDIT.md`.
+- ILINet snapshot `data/ilinet_snapshot_20261016.json` (one declared snapshot, current values only, no vintages): Delphi `fluview`, hhs1..hhs10, epiweeks 201040–202639, downloaded 2026-10-16T07:47Z, SHA-256 `4d860a61…991d`. 835 rows per region, 0 missing epiweeks, 0 null wILI; latest epiweek 202639 = issue 202639 (released 2026-10-09). Tidy CSV + audit via `src/check_ilinet.py`; URL, hash and counts in `data/README.md`. `load_ilinet()` returns the 835 × 10 (Sunday epiweek start × region) wILI grid, NaN for missing weeks (never filled); `epiweek_start()` implements MMWR weeks. `tests/test_ilinet.py`: 19 passed; full suite 45 passed.
+- Seasonal-naive 52-row lag checked on the Sri Lankan grid: rows 904–1011 span 364 days (88 rows) or 366 days (20 rows, all 2026 Monday-start weeks).
 - Git repo initialized and pushed to `origin/main`.
 
 Open / not started:
@@ -64,9 +67,9 @@ Open / not started:
 - MultiQT baseline implementation — not started; decided: own implementation + parity.
 - Centre-only correction and DAQA adapter code (5.4) — not started.
 - Interval calibration tracker (5.7), seasonal naive comparator, protocol file (not yet drafted, hashed, or committed) — not started.
-- ILINet snapshot download and transfer validation (5.2) — not started.
+- ILINet transfer validation (5.2) — snapshot in hand, no modelling yet. Open: the snapshot's `issue`/`lag` are the latest revision (10 distinct issues, roughly one per season), not the release that first reported week t, so 5.2's "issue t aligned with the release that first reports week t" must be implemented in the timing layer without them.
 - Everything in Weeks 2–4 of the proposal's work plan (metrics, bootstrap, shock test, case study, offline demo, dissertation) — not started.
 
 Assumed / open from the audit: report-week vs onset-week meaning of `cases`, and the Epidemiology Unit's own week-53 convention, are unchecked. Irregular weeks (2009 boundaries, 2025-12-27/28 uncovered by the Monday switch) mean a 52-row lag is not always exactly 364 days; decide how to handle this when building features.
 
-Next: full Chronos forecast cache (5.3), then release queue + chronology/perturbation tests.
+Next: Step 4: timing layer

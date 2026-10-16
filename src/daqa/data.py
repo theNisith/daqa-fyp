@@ -1,14 +1,17 @@
-"""Sri Lankan dengue data layer: load, weekly grid, validation, splits, area scale.
+"""Data layer: Sri Lankan dengue (load, weekly grid, validation, splits, area
+scale) and the U.S. ILINet HHS-region snapshot (load as a weekly grid).
 
-Chronology is taken from ``start.date`` only. The ``year``/``week`` columns are
-kept for auditing but never used for ordering (2024-25 labels are shifted by
-one, the 2026 week-53 row is dated 2025-12-20, and weeks start on Monday from
-2026; see data/AUDIT.md). No imputation, transforms, smoothing or outlier
+Sri Lankan chronology is taken from ``start.date`` only. The ``year``/``week``
+columns are kept for auditing but never used for ordering (2024-25 labels are
+shifted by one, the 2026 week-53 row is dated 2025-12-20, and weeks start on
+Monday from 2026; see data/AUDIT.md). ILINet chronology is the Sunday start of
+each CDC (MMWR) epiweek. No imputation, transforms, smoothing or outlier
 removal happens here: a missing area-week stays NaN.
 """
 
 from __future__ import annotations
 
+import json
 from dataclasses import dataclass
 from pathlib import Path
 
@@ -16,8 +19,14 @@ import numpy as np
 import pandas as pd
 import pyreadr
 
-DATA_PATH = Path(__file__).resolve().parents[2] / "data" / "srilanka_weekly_data.rda"
+DATA_DIR = Path(__file__).resolve().parents[2] / "data"
+DATA_PATH = DATA_DIR / "srilanka_weekly_data.rda"
 DATE_FORMAT = "%m/%d/%Y"
+
+ILINET_PATH = DATA_DIR / "ilinet_snapshot_20261016.json"
+ILINET_SHA256 = "4d860a6139851af203739cabdf7e50d69ca79de2cb31c95cbaf712b939b6991d"
+HHS_REGIONS = tuple(f"hhs{i}" for i in range(1, 11))
+ILINET_COLUMNS = ["region", "epiweek", "wili", "num_ili", "num_patients", "release_date", "issue", "lag"]
 
 N_WEEKS = 1012
 N_AREAS = 26
@@ -136,3 +145,59 @@ def area_scale(grid: pd.DataFrame, scaling_idx: range) -> pd.Series:
     if len(empty):
         raise ValueError(f"no observed weeks in scaling segment for {list(empty)}")
     return np.maximum(1.0, seg.mean(skipna=True)).rename("scale")
+
+
+# ---------- ILINet (HHS regions) ----------
+
+def _mmwr_week1_start(year: int) -> pd.Timestamp:
+    """Sunday starting MMWR week 1: the Sunday-Saturday week containing 4 January."""
+    jan4 = pd.Timestamp(year, 1, 4)
+    return jan4 - pd.Timedelta(days=(jan4.dayofweek + 1) % 7)  # dayofweek: Mon=0 .. Sun=6
+
+
+def epiweek_start(epiweek: int) -> pd.Timestamp:
+    """Sunday start date of CDC epiweek ``YYYYWW``; CDC weeks run Sunday to Saturday."""
+    year, week = divmod(int(epiweek), 100)
+    start = _mmwr_week1_start(year) + pd.Timedelta(weeks=week - 1)
+    if week < 1 or start >= _mmwr_week1_start(year + 1):
+        raise ValueError(f"invalid epiweek {epiweek}")
+    return start
+
+
+def load_ilinet_long(path: str | Path = ILINET_PATH) -> pd.DataFrame:
+    """Long frame of the snapshot: ILINET_COLUMNS plus start_date, ordered by (start_date, region).
+
+    A null wili stays NaN; release_date is parsed to a Timestamp.
+    """
+    with open(path, encoding="utf-8") as f:
+        payload = json.load(f)
+    if payload.get("result") != 1:
+        raise ValueError(f"snapshot result={payload.get('result')} message={payload.get('message')!r}")
+    df = pd.DataFrame(payload["epidata"])[ILINET_COLUMNS]
+    df["wili"] = df["wili"].astype(float)
+    df["release_date"] = pd.to_datetime(df["release_date"], format="%Y-%m-%d")
+    df["start_date"] = df["epiweek"].map(epiweek_start)
+    df["_r"] = df["region"].map({r: i for i, r in enumerate(HHS_REGIONS)})
+    df = df.sort_values(["start_date", "_r"], kind="mergesort").drop(columns="_r")
+    return df.reset_index(drop=True)
+
+
+def load_ilinet(path: str | Path = ILINET_PATH) -> pd.DataFrame:
+    """(epiweek start date x region) grid of wili for hhs1..hhs10.
+
+    The index is every Sunday from the first to the last epiweek in the
+    snapshot, so an epiweek absent for a region (or with null wili) is NaN,
+    never filled.
+    """
+    df = load_ilinet_long(path)
+    unknown = set(df["region"]) - set(HHS_REGIONS)
+    if unknown:
+        raise ValueError(f"unexpected regions {sorted(unknown)}")
+    dup = df.duplicated(["region", "epiweek"])
+    if dup.any():
+        raise ValueError(f"{int(dup.sum())} duplicate (region, epiweek) rows")
+    grid = df.pivot(index="start_date", columns="region", values="wili")
+    full = pd.date_range(grid.index.min(), grid.index.max(), freq="7D", name="start_date")
+    grid = grid.reindex(index=full, columns=list(HHS_REGIONS)).astype(float)
+    grid.columns.name = "region"
+    return grid
