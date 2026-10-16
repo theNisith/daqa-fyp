@@ -62,10 +62,10 @@ Done / verified:
 - Seasonal-naive 52-row lag checked on the Sri Lankan grid: rows 904–1011 span 364 days (88 rows) or 366 days (20 rows, all 2026 Monday-start weeks).
 - Timing layer `src/daqa/timing.py` (grid-position indices, identical for both datasets): `available_context` (last ≤104 values with index ≤ t−d, NaN kept, shorter if history is short, never padded, returns a copy), `step_index` = h+d, `first_usable_issue` = s+h+d, `multiqt_delay` D = h−1+d, `matured_at` (s+h+d == t), `matured_up_to` (s+h+d ≤ t); non-study (h, d) cells raise. `tests/test_timing.py`: 53 passed — all six cells, the issue-11/h=1/d=2 example (data through 9, step 3, usable at 14), edges h+d=1 and h+d=8, each record matures exactly once and never before s+h+d, 500-case random property test (no context index > t−d; perturbing every value after t−d leaves the context unchanged). Mutation-checked: leaking one future week fails 21 tests; maturing one issue early fails 16. Full suite: 98 passed.
 - `.gitattributes` (`*.json`/`*.csv -text`, `*.rda`/`*.npz`/`*.parquet binary`) committed; SHA-256 of both data files unchanged in working tree and committed blobs.
+- Frozen Chronos-Bolt forecast cache (5.3), `src/daqa/cache.py` → `cache/{srilanka,ilinet}_chronos_bolt_small.npz` + `cache/MANIFEST.md` (9.3 MB, committed). Inference only, no scores. Model revision `772f3d25…46f5d8` pinned in code; CPU, float32, eval, no_grad. Issues = first warm-up … last test (Sri Lanka rows 800–1007, ILINet 623–830; 208 each) × d ∈ {0,2,4}, context `available_context(…, 104)` (all full length), 8 steps × native 0.1–0.9. Arrays (issue, area, delay, step, 9): `raw` (unclipped) and `sorted`. One request per (issue, delay) with all areas: CPU outputs depend on batch composition at ~1e-5 (measured: 3.8e-5 abs), so the fixed batch makes recomputation exact; a full rebuild reproduced identical file and array hashes. Counts: Sri Lanka 24 NaN contexts (all Puttalam), 65 of 129,792 vectors needed sorting, 21,120 negative raw quantiles (mostly Northern Province areas: Kilinochchi 5,099, Vavuniya 4,627, Mullaitivu 4,176); ILINet 0 NaN contexts, 17 of 49,920 needed sorting, 0 negatives. `tests/test_cache.py`: 13 passed (shapes/sorted non-decreasing, determinism on 20 random entries within 1e-6, future values after t−d set to 1e9 at 3 issues × 3 delays per dataset leave forecasts unchanged within 1e-6, plus a power check that a one-week leak changes them by > 1e3). Full suite: 111 passed.
 - Git repo initialized and pushed to `origin/main`.
 
 Open / not started:
-- Full forecast cache across both datasets, all 6 (h, d) cells (proposal 5.3) — only a smoke test exists so far, not the real cache.
 - Release queue built on the timing layer + future-label perturbation test (5.6) — not written yet (timing primitives and their unit tests are done).
 - MultiQT baseline implementation — not started; decided: own implementation + parity.
 - Centre-only correction and DAQA adapter code (5.4) — not started.
@@ -75,4 +75,4 @@ Open / not started:
 
 Assumed / open from the audit: report-week vs onset-week meaning of `cases`, and the Epidemiology Unit's own week-53 convention, are unchecked. Irregular weeks (2009 boundaries, 2025-12-27/28 uncovered by the Monday switch) mean a 52-row lag is not always exactly 364 days; decide how to handle this when building features.
 
-Next: full Chronos-Bolt forecast cache (5.3) using `available_context` + 8-step requests, then release queue + future-label perturbation test (5.6).
+Next: Step 6, MultiQT.
